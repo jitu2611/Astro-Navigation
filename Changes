@@ -1,0 +1,69 @@
+A. Biggest issue: your “exact spherical trig” path still rounds LHA
+
+In calcSightReduction(), LHA is computed as:
+
+let lha = Math.round(gha + lon);
+
+That means even your direct trig fallback is not using the true fractional LHA. It is using a whole-degree LHA. That is acceptable only for table entry logic, not for an “exact” computational path. Later the code computes Hc and Zn from that rounded value.
+
+Why this matters in practice:
+
+For SR tables, whole-degree LHA is correct.
+
+For direct trig, it should be:
+
+trueLHA = gha + DR longitude
+
+normalized to 0–360
+
+not rounded
+
+So at present, your “calculator” behaves closer to a tabular approximation than a full-precision computational reduction.
+
+B. Tutorial text and code disagree on Zn quadrant rules
+
+Your educational section says:
+
+Northern hemisphere, LHA > 180° → Zn = 360° − Z
+
+Northern hemisphere, LHA ≤ 180° → Zn = Z
+
+Southern hemisphere, LHA > 180° → Zn = 180° + Z
+
+Southern hemisphere, LHA ≤ 180° → Zn = 180° − Z
+
+But the actual code in computeSRTable() uses:
+
+if (latDir > 0) {
+    zn = lha > 180 ? zVal : 360 - zVal;
+} else {
+    zn = lha > 180 ? 180 - zVal : 180 + zVal;
+}
+
+So your code and the instructional text are reversed.
+
+That is a serious training issue, because a trainee may learn one rule while the calculator applies another.
+
+C. Mixed use of DR position and chosen position is not clearly separated
+
+You correctly derive chosen longitude for whole-degree LHA in the SR-table workflow. That is good. But in the overall code flow, the distinction between:
+
+DR position
+
+Chosen/Assumed position
+
+Position used for Hc/Zn
+
+Position used for plotting intercept
+
+is not cleanly enforced everywhere.
+
+For celestial navigation training, this must be explicit:
+
+Ho belongs to the observation
+
+Hc and Zn belong to the assumed/chosen position
+
+intercept is then transferred from AP/DR accordingly
+
+Right now the code teaches that idea, but the computation path is not separated cleanly enough.
